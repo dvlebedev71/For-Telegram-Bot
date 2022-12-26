@@ -2,9 +2,12 @@ package CheckBot.CheckBot;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +20,7 @@ import org.json.JSONTokener;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.CallbackQuery;
+import com.pengrad.telegrambot.model.Chat;
 import com.pengrad.telegrambot.model.ChosenInlineResult;
 import com.pengrad.telegrambot.model.InlineQuery;
 import com.pengrad.telegrambot.model.MenuButton;
@@ -54,149 +58,134 @@ import com.pengrad.telegrambot.response.GetUpdatesResponse;
 import com.pengrad.telegrambot.response.SendResponse;
 
 /**
- * Hello world!
- *
+ * This application is for restricting rights and granting rights to the user in a telegram chat.
+ * For a volunteer project "
+ * Creater Dmitrii Lebedev 
+ * December 2022
  */
 public class App 
 {
-	private static String botHash="1942950848:AAG5ZEWSVvyGKkCw_yXFAWFr12068oVmv1Q";
-	//private static String numberOfChat="-1001756121759";
-	private static String fileResource="/home/dima/eclipse-workspace/CheckBot/resource.json";
+	private static String fileResource="resource.json";
     private static Long chatMainId=(long) 0;
     private static Long newUserId=(long) 0;
-    private static Integer id0;
-    private static Integer id1;
-    private static Integer id2;
+    private static Map infoChatUser;
+    private static FileWriter record;
+    private static Map firstAnswer;
+    
+    public static void SystemLog(String text) 
+    {
+        Calendar Today=Calendar.getInstance();  // опрелим сегодняшнюю дату и установим дату из параметров            
+        try {
+        	int month=Today.get(Calendar.MONTH)+1;
+			record.write(Today.get(Calendar.YEAR) + "." + month + "." + Today.get(Calendar.DATE) + " " + Today.get(Calendar.HOUR_OF_DAY) + ":" + Today.get(Calendar.MINUTE) + ":" + Today.get(Calendar.SECOND) + " " + text + "\n");
+	        record.flush();
+		} catch (IOException e) {
+			System.out.println("Ошибка записи в журнал " + e.getMessage());
+			e.printStackTrace();
+		}
+
+    }
 	public static void main(String[] args) throws InterruptedException {
 
 		System.out.print("Устанавливаю подключение с Ботом ... ");
+		infoChatUser=new HashMap<>();
+		firstAnswer=new HashMap<>();
+		String botHash=getStringFromJson("BotHash");
 	    TelegramBot bot = new TelegramBot(botHash);
-
+	    try {
+			record=new FileWriter("CheckBot.log",true);
+		} catch (IOException e1) {
+			// 
+			System.err.println("Ошибка создания лог файла CheckBot.log" + e1.getMessage());
+			e1.printStackTrace();
+		}
 	    bot.setUpdatesListener(updates->{
 			    for (Update update : updates) {
-			    	System.out.println("update= " + update.updateId());
-			    	if(update.chatJoinRequest()!=null)
-			    		System.out.println(update.chatJoinRequest().from().lastName());
-			    	if(update.channelPost()!=null)
-			    		System.out.println("channelPost()" + update.channelPost().text());
-			    	if(update.chatMember()!=null)
-			    		System.out.println("chatMember()" + update.chatMember().newChatMember().user().lastName());
-			    	if(update.chosenInlineResult()!=null)
-			    		System.out.println("chosenInlineResult()" + update.chosenInlineResult().from().lastName());
-			    	if(update.inlineQuery()!=null)
-			    		System.out.println("inlineQuery()" + update.inlineQuery().query());
 			    	if(update.message()!=null) {
-			    		System.out.println("message()" + update.message().chat().title());
+			    		//System.out.println("message()" + update.message().chat().title());
 			    		if(update.message().leftChatMember()!=null)
-			    			System.out.println("chat left " + update.message().leftChatMember().firstName() + " " + update.message().leftChatMember().lastName());
-			    		if(update.message().chat()!=null) {
-			    			System.out.println("bio() " + update.message().chat().description() );
-			    		}
-			    		if(update.message().contact()!=null)
-			    			System.out.println("contact " + update.message().contact().lastName());
+			    			SystemLog("Пользователь " + update.message().leftChatMember().firstName() + " " + update.message().leftChatMember().lastName() + " @" + update.message().leftChatMember().username() + " покинул чат " + update.message().chat().title());
 			    		if(update.message().entities()!=null) {
 			    			try {
 								startBot(update.message().chat().id(),bot);
 								GetChatResponse getChatResponse = bot.execute(new GetChat(chatMainId));
 								GetMeResponse getMeResponse=bot.execute(new GetMe());							
-								GetChatMemberResponse getChatMember=bot.execute(new GetChatMember(update, chatMainId));						
-								System.out.println("canSendMessages()" + getChatResponse.chat().permissions().canSendMessages());
-								System.out.println("firstname()" + getMeResponse.user().firstName());								
-								//System.out.println("canSendMessages2()" + getChatMember.chatMember().canSendMessages());
+								GetChatMemberResponse getChatMember=bot.execute(new GetChatMember(update, chatMainId));
 								getChatResponse.chat().permissions().canSendMessages(true);
-								System.out.print("charId=" +chatMainId + " newUserId=" + newUserId);
 								BaseResponse response = bot.execute(new RestrictChatMember(chatMainId,newUserId).canSendMessages(true));
-								System.out.println(" ?=" + response.isOk());
+								SystemLog("Пользователю " + ((User)infoChatUser.get(newUserId)).lastName() + " @" + ((User)infoChatUser.get(newUserId)).username() + " выданы права для записи");
 								getChatResponse = bot.execute(new GetChat(chatMainId));
-								DeleteMessage deleteMessage0 = new DeleteMessage(chatMainId, id0);
-								BaseResponse response0 = bot.execute(deleteMessage0);
-								DeleteMessage deleteMessage1 = new DeleteMessage(chatMainId, id1);
-								BaseResponse response1 = bot.execute(deleteMessage1);
-								DeleteMessage deleteMessage2 = new DeleteMessage(chatMainId, id2);
-								BaseResponse response2 = bot.execute(deleteMessage2);
+								int countAnswer=firstAnswer.size();
+								for(int i=0;i<countAnswer;i++) {	
+									DeleteMessage deleteMessage0 = new DeleteMessage(chatMainId, (int) firstAnswer.get(newUserId + "_" + i));
+									BaseResponse response0 = bot.execute(deleteMessage0);
+									if(response0.isOk()) {
+										SystemLog("Удалено сообщение " + (int) firstAnswer.get(newUserId + "_" + i) + " от Бота после пользователя " + ((User)infoChatUser.get(newUserId)).lastName() + " @" + ((User)infoChatUser.get(newUserId)).username());
+										firstAnswer.remove(newUserId + "_" + i);
+									}
+									else
+										SystemLog("!!! Ошибка удаления сообщений от Бота после пользователя " + ((User)infoChatUser.get(newUserId)).lastName() + " @" + ((User)infoChatUser.get(newUserId)).username() + "(" + response0.description() + ")");
+								}
+								
 								
 							} catch (InterruptedException e) {
-								// TODO Auto-generated catch block
+								// Ошибка
+								SystemLog("Ошибка удаления сообщений от Бота, ниже стек вызова " + e.getMessage());
 								e.printStackTrace();
 							}
 			    		}
-			    		if(update.message().forumTopicCreated()!=null)
-			    			System.out.println("forumTopicCreate " + update.message().forumTopicCreated().name());
-			    		if(update.message().forwardFrom()!=null)
-			    			System.out.println("forwardFrom " + update.message().forwardFrom().lastName());
 			    		if(update.message().newChatMembers()!=null) {
-			    			System.out.print("new user ");
 			    			for(int i=0;i<update.message().newChatMembers().length; i++) {
+			    				SystemLog("В чат вошел новый пользователь " + update.message().newChatMembers()[i].lastName() + " @" + update.message().newChatMembers()[i].username());			    				
 			    				chatMainId=update.message().chat().id();
 			    				newUserId=update.message().newChatMembers()[i].id();
-								System.out.print("Для чата charId=" +chatMainId + " и нового пользователя newUserId=" + newUserId + " установлен режим чтения");
+			    				infoChatUser.put(chatMainId, update.message().chat());
+			    				infoChatUser.put(newUserId,update.message().newChatMembers()[i]);
 								BaseResponse response = bot.execute(new RestrictChatMember(chatMainId,newUserId).canSendMessages(false));
-								System.out.println(" ?=" + response.isOk());
-			    				System.out.print(update.message().newChatMembers()[i].lastName() + " " + newUserId + " " );
-			    				String newuser0=getStringFromJson("newuser0");
-			    				String newuser1=getStringFromJson("newuser1");
-			    				String newuser2=getStringFromJson("newuser2");
-			    				String usernameBot=getStringFromJson("usernameBot");
-			    				id0=sendMessage2Bot(update.message().chat().id(),newuser0 + update.message().newChatMembers()[i].firstName() + " " + update.message().newChatMembers()[i].lastName(),bot);		    				
-			    				id1=sendMessage2Bot(update.message().chat().id(),newuser1 + usernameBot, bot);
-			    				id2=sendMessage2Bot(update.message().chat().id(),newuser2,bot);
+								if(response.isOk())
+									SystemLog("Для чата charId=" +chatMainId + " " + update.message().chat().title() + " и нового пользователя " + update.message().newChatMembers()[i].lastName() + " @" + update.message().newChatMembers()[i].username() + " установлен режим чтения");
+								else
+									SystemLog("Ошибка!!! Для чата charId=" +chatMainId + " " + update.message().chat().title() + " и нового пользователя " + update.message().newChatMembers()[i].lastName() + " @" + update.message().newChatMembers()[i].username() + " НЕ установлен режим чтения!!!");
+
+								Map firstMessage=getMapFromJson("firstMessage","newuser");
+								for(int j=0;j<firstMessage.size(); j++) {
+									String temp;
+									switch (j) {
+									case 0:
+										temp=update.message().newChatMembers()[i].firstName() + " " + update.message().newChatMembers()[i].lastName();
+										break;
+									case 1:
+										temp=getStringFromJson("usernameBot");
+										break;
+									default:
+										temp="";	
+									}
+									
+									firstAnswer.put(newUserId + "_" +j,sendMessage2Bot(update.message().chat().id(),(String) firstMessage.get("newuser" + j) + temp,bot));
+								}
+
 			    			}
-			    			System.out.println();
+			    			
 			    		}
-			    		if(update.message().location()!=null)
-			    			System.out.println("location " + update.message().location().toString());
+
 			    	}
-			    	if(update.myChatMember()!=null)
-			    		System.out.println("myChatMember()" + update.myChatMember().from().lastName());
-			    	if(update.preCheckoutQuery()!=null)
-			    		System.out.println("preCheckoutQuery()" + update.preCheckoutQuery().toString());
-			    	if(update.shippingQuery()!=null)
-			    		System.out.println("shippingQuery()" + update.shippingQuery().from().lastName());
-			    	if(update.poll()!=null)
-			    		System.out.println("poll()" + update.poll().question());
-			    	
-			    	
-			    	
-			    	
+    	
 			    }
 			    return UpdatesListener.CONFIRMED_UPDATES_ALL;
 			}
 		);
-/*	    bot.setUpdatesListener(new UpdatesListener() {
-			@Override
-			public int process(List<Update> updates) {
-				   for (Update update : updates) {
-					   	 Message message = update.message();
-					     Chat chat = message.chat();
-					     User user = message.from();
-					        if (message.text() != null) {
-					            System.out.println("New message: " + message.text() + " id: " + message.messageId() + " from " + chat);
-					            //SendResponse sendResponse = bot.execute(new SendMessage(chat.id(), "Selber: " + message.text()));
-					        }
-					      }
-			    return UpdatesListener.CONFIRMED_UPDATES_ALL;
-			}
-		});
-*/
-	    System.out.println(" Ok!!!");
-	    //Long lll=new Long(numberOfChat);
-	    	
-	    //foo(bot,lll);
-	    //startBot(lll,bot);
-	    System.out.print("Финиш " );
 
-	    ///bot.removeGetUpdatesListener();
+	    System.out.println(" Ok!!!");
+
+	    System.out.println("Слушатель запущен " );
+
+
 	}
 
 	public static void startBot(Long chatId,TelegramBot bot) throws InterruptedException {
 
 		Map textBegin=getMapFromJson("textBegin","begin");
 		Map timeout=getMapFromJson("textBegin","timeout");
-		//List<Integer> timeout = new ArrayList<Integer>() ;
-		//timeout.add(getIntFromJson("timeout1"));
-		//timeout.add(getIntFromJson("timeout2"));
-		//String badfinish=getStringFromJson("badfinish");
-		//String next=getStringFromJson("next");
 		Map ans=getMapFromJson("answer","ans");
 		String question=getStringFromJson("question");
 		int timeoutAnswer=getIntFromJson("timeoutAnswer");
@@ -204,7 +193,7 @@ public class App
 		Map go=getMapFromJson("reaction","get");
 		Map check=getMapFromJson("check","a");
 		Map correct=getMapFromJson("check","b");
-		//reaction=getMapFromJson("reaction");
+
 		
 		boolean flag=true;
 		while(true) {
@@ -214,7 +203,6 @@ public class App
 					
 			Map answer=sendAnswer2Bot(chatId,ans,bot, question,timeoutAnswer);
 			if(((String) answer.get("timeout")).equalsIgnoreCase("false")) {
-				//sendMessage2Bot(chatId, "Хмм.. твой ответ: " + answer.get("text"),bot);
 				String label=findMap(ans,(String) answer.get("text"));
 				String gokey=label.replace('a', 'g').replace('n', 'e').replace('s', 't');
 			    String mes=(String) reaction.get(label);
@@ -232,12 +220,10 @@ public class App
 			    	continue;
 			    if(next.equalsIgnoreCase("next")) {
 			    	String strNext=getStringFromJson(next);
-			    	//sendMessage2Bot(chatId, strNext,bot);
 					Map ansCheck=sendAnswer2Bot(chatId,check,bot, strNext,timeoutAnswer);
 					if(((String) ansCheck.get("timeout")).equalsIgnoreCase("false")) {
 						String label1=findMap(check,(String) ansCheck.get("text"));					
 						String anstrue=label1.replace('a', 'b');
-						System.out.println("anstrue=" + correct.get(anstrue) + " ansCheck=" + ansCheck.get("text") + " label1=" + label1);
 						String a=(String) correct.get(anstrue);
 						if(a.equalsIgnoreCase("true")) {
 							String goodfinish=getStringFromJson("goodfinish");
@@ -254,29 +240,6 @@ public class App
 				continue;
 			}
 			
-			//break;
-			/*
-			String label=findMap(ans,answer);
-			if(label.equalsIgnoreCase("textBegin")) 
-				continue;
-			if(label.equalsIgnoreCase("question")) {
-				flag=false;
-				continue;
-			}
-			if(label.equalsIgnoreCase("badfinish")) {
-				sendMessage2Bot(chatId, badfinish);
-				break;
-			}
-			if(label.equalsIgnoreCase("next")) {
-				sendMessage2Bot(chatId, next);
-				int count=getIntFromJson("countqustion");
-				int rnd=(int) (Math.random()+count);
-				String q=getStringFromJson("question" + rnd);
-				sendMessage2Bot(chatId, q);
-				
-				
-			}
-			*/
 		}
 		
 	}
@@ -534,8 +497,8 @@ public class App
 			if(message!=null) {
 			     User user = message.from();
 		        if (message.text() != null) { 
-		            System.out.println("up=" + up.updateId() + " New message: " + message.text() + " id: " + message.messageId() + " from " + user.username() 
-		              );
+		            //System.out.println("up=" + up.updateId() + " New message: " + message.text() + " id: " + message.messageId() + " from " + user.username() 
+		            //  );
 		            mes.put("id",message.messageId());
 		            mes.put("text",message.text());
 		            mes.put("user", user.username());
