@@ -72,9 +72,11 @@ public class App
     private static FileWriter record;
     private static Map firstAnswer;
     
-    public static void SystemLog(String text) 
-    {
-        Calendar Today=Calendar.getInstance();  // опрелим сегодняшнюю дату и установим дату из параметров            
+    public static void SystemLog(String text)     {
+    	/* функция вывода событий в журнал
+    	 * переменная record должна быть уже опредена
+    	 */
+    	Calendar Today=Calendar.getInstance();  // определим сегодняшнюю дату и установим дату из параметров            
         try {
         	int month=Today.get(Calendar.MONTH)+1;
 			record.write(Today.get(Calendar.YEAR) + "." + month + "." + Today.get(Calendar.DATE) + " " + Today.get(Calendar.HOUR_OF_DAY) + ":" + Today.get(Calendar.MINUTE) + ":" + Today.get(Calendar.SECOND) + " " + text + "\n");
@@ -86,7 +88,9 @@ public class App
 
     }
 	public static void main(String[] args) throws InterruptedException {
-
+		/*
+		 * Подключение к боту и запуск слушателя
+		 */
 		System.out.print("Устанавливаю подключение с Ботом ... ");
 		infoChatUser=new HashMap<>();
 		firstAnswer=new HashMap<>();
@@ -102,12 +106,11 @@ public class App
 	    bot.setUpdatesListener(updates->{
 			    for (Update update : updates) {
 			    	if(update.message()!=null) {
-			    		//System.out.println("message()" + update.message().chat().title());
-			    		if(update.message().leftChatMember()!=null)
+			    		if(update.message().leftChatMember()!=null)  // Пользователь покинул чат
 			    			SystemLog("Пользователь " + update.message().leftChatMember().firstName() + " " + update.message().leftChatMember().lastName() + " @" + update.message().leftChatMember().username() + " покинул чат " + update.message().chat().title());
-			    		if(update.message().entities()!=null) {
+			    		if(update.message().entities()!=null) {  // пользователь "запустил" разговор с ботом в отдельном чате
 			    			try {
-								startBot(update.message().chat().id(),bot);
+								startBot(update.message().chat().id(),bot); // разговор с ботом
 								GetChatResponse getChatResponse = bot.execute(new GetChat(chatMainId));
 								GetMeResponse getMeResponse=bot.execute(new GetMe());							
 								GetChatMemberResponse getChatMember=bot.execute(new GetChatMember(update, chatMainId));
@@ -116,7 +119,7 @@ public class App
 								SystemLog("Пользователю " + ((User)infoChatUser.get(newUserId)).lastName() + " @" + ((User)infoChatUser.get(newUserId)).username() + " выданы права для записи");
 								getChatResponse = bot.execute(new GetChat(chatMainId));
 								int countAnswer=firstAnswer.size();
-								for(int i=0;i<countAnswer;i++) {	
+								for(int i=0;i<countAnswer;i++) {	// удаляем сообщения в основном чате, которые мы написали при входе нового пользователя
 									DeleteMessage deleteMessage0 = new DeleteMessage(chatMainId, (int) firstAnswer.get(newUserId + "_" + i));
 									BaseResponse response0 = bot.execute(deleteMessage0);
 									if(response0.isOk()) {
@@ -134,7 +137,7 @@ public class App
 								e.printStackTrace();
 							}
 			    		}
-			    		if(update.message().newChatMembers()!=null) {
+			    		if(update.message().newChatMembers()!=null) { // к чату подключился новый пользователь
 			    			for(int i=0;i<update.message().newChatMembers().length; i++) {
 			    				SystemLog("В чат вошел новый пользователь " + update.message().newChatMembers()[i].lastName() + " @" + update.message().newChatMembers()[i].username());			    				
 			    				chatMainId=update.message().chat().id();
@@ -150,7 +153,7 @@ public class App
 								Map firstMessage=getMapFromJson("firstMessage","newuser");
 								for(int j=0;j<firstMessage.size(); j++) {
 									String temp;
-									switch (j) {
+									switch (j) { // добавим некоторые данные информационных сообщений в основном чате 
 									case 0:
 										temp=update.message().newChatMembers()[i].firstName() + " " + update.message().newChatMembers()[i].lastName();
 										break;
@@ -171,7 +174,7 @@ public class App
 			    	}
     	
 			    }
-			    return UpdatesListener.CONFIRMED_UPDATES_ALL;
+			    return UpdatesListener.CONFIRMED_UPDATES_ALL;  // все данные слушателя прослушаны и обработаны
 			}
 		);
 
@@ -183,6 +186,9 @@ public class App
 	}
 
 	public static void startBot(Long chatId,TelegramBot bot) throws InterruptedException {
+		/*
+		 * запуск "разговора" бота с новым участником чата
+		 */
 
 		Map textBegin=getMapFromJson("textBegin","begin");
 		Map timeout=getMapFromJson("textBegin","timeout");
@@ -196,7 +202,7 @@ public class App
 
 		
 		boolean flag=true;
-		while(true) {
+		while(true) {  // цикл вопросов бота
 			if(flag) {
 				sendMessage2Bot(chatId, textBegin, "begin", timeout, "timeout", bot);
 			}
@@ -243,31 +249,12 @@ public class App
 		}
 		
 	}
-	private static void insertOuterChat(TelegramBot bot, Long chatId) {
-		// Goto Other Chat
-		  InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(new InlineKeyboardButton[]{
-			      new InlineKeyboardButton("ddd").url("https://t.me/+TLfVpbnrWGNlZThi")});
-		InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
-		        new InlineKeyboardButton[]{
-		                new InlineKeyboardButton("Вход в чат").url("https://t.me/+TLfVpbnrWGNlZThi"),
-		                new InlineKeyboardButton("callback_data").callbackData("callback_data"),
-		                new InlineKeyboardButton("Game").callbackGame("94%")
-		                //new InlineKeyboardButton("Switch!").switchInlineQuery("switch_inline_query")
-		        });
-		BaseResponse response = bot.execute(new SendMessage(chatId,"key").replyMarkup(keyboard));
-		//SendMessage sf=new SendMessage(chatId,"key");
-		//sf.replyMarkup(inlineKeyboard);
-		//SendResponse sendResponse = bot.execute(sf);
-		//BaseResponse response; //=bot.execute(sendResponse.message().messageId())		
-		//sendMessage2Bot(chatId,"Кнопка",bot,inlineKeyboard);
-	}
-
-	private static void sendMessage2Bot(Long chatId, String question) {
-		// For text
-		System.out.println(question);
-	}
+	
 	private static String findMap(Map ans, String answer) {
-		// Find answer from List
+		/*
+		 * Find answer from List
+		 * Обратный поиск, по значению найти ключ
+		 */
 		String keyReturn="";
 		for(Object key:  ans.keySet()) {
 			String a=(String) ans.get(key);
@@ -277,6 +264,9 @@ public class App
 		return	keyReturn;
 	}
 	private static Map getMapFromJson(String ans,String name) {
+		/*
+		 * Загрузить данные из json файла в Map
+		 */
 		// Read Map from Json file
         //JSON parser object to parse read file
 		Map mapAns=new HashMap<>();
@@ -285,6 +275,7 @@ public class App
 			is = new FileInputStream(fileResource);
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
+			SystemLog("Ошибка открытия файла ресурсов " + fileResource +  " " + e.getMessage() );
 			e.printStackTrace();
 		}
 
@@ -302,13 +293,16 @@ public class App
         try {
 			is.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			SystemLog("Ошибка закрытия файла ресурсов " + fileResource +  " " + e.getMessage() );
 			e.printStackTrace();
         }
 		return mapAns;
 	}
 	private static Map sendAnswer2Bot(Long chatId, Map ans, TelegramBot bot, String question, int timeoutAnswer) throws InterruptedException {
-		// TODO Auto-generated method stub
+		/*
+		 * Определение ответа пользователя на вопрос от бота 
+		 */
+		
 		String[] name1 = new String [ans.size()/2];
 		String[] name2 = new String [ans.size()-ans.size()/2];
 		int i=0;
@@ -334,7 +328,6 @@ public class App
 		Integer b=a;
 		int ii=0;
 		Map mes=new HashMap<>();
-		//sendMessage2Bot(chatId,bot);
 		while(a.intValue()==b.intValue() && ii<timeoutAnswer) {
 			Thread.sleep(10*60-1);
 			mes=listMessage(chatId,bot);
@@ -370,7 +363,7 @@ public class App
 		return (String) object.getString(string);
 	}
 	private static int getIntFromJson(String string) {
-		// read String from Json
+		// read Integer from Json
         InputStream is=null;
 		try {
 			is = new FileInputStream(fileResource);
@@ -402,10 +395,88 @@ public class App
 			
 		
 	}
-	private static String[] getTextArrayFromJson(String string) {
-		// Read text array from Json
-		
-		return null;
+
+	private static Integer sendMessage2Bot(Long chatId, String messaggio,TelegramBot bot)  {
+		SendMessage sf=new SendMessage(chatId,messaggio);
+	    SendResponse sendResponse = bot.execute(sf);
+	    boolean ok = sendResponse.isOk();
+	    Message message = sendResponse.message();
+	    Integer id=message.messageId();
+	    return id;
+	}
+	private static void sendMessage2Bot(Long chatId, String messaggio,TelegramBot bot,Keyboard replyKeyboardMarkup)  {
+		SendMessage sf=new SendMessage(chatId,messaggio);
+		sf.replyMarkup(replyKeyboardMarkup);
+	    SendResponse sendResponse = bot.execute(sf);
+	    boolean ok = sendResponse.isOk();
+	    Message message = sendResponse.message();
+	}
+
+	private static  Map listMessage(Long chatId,TelegramBot bot) {
+		/*
+		 * поиск сообщения в чате
+		 */
+		Map mes=new HashMap<>();
+		GetUpdates getUpdates = new GetUpdates().limit(1).offset(-1).timeout(0);
+		GetUpdatesResponse updatesResponse = bot.execute(getUpdates);
+		List<Update> updates = updatesResponse.updates();
+		Message message;
+		Integer mId=0;
+		mes.put("id", mId);
+		for(Update up: updates) {
+			message = up.message();
+			if(message!=null) {
+			     User user = message.from();
+		        if (message.text() != null) { 
+		            mes.put("id",message.messageId());
+		            mes.put("text",message.text());
+		            mes.put("user", user.username());
+		            mes.put("username", user.firstName() + " " + user.lastName());
+		            mId=message.messageId();
+		            
+		        }
+			}
+		}	
+		return mes;
+	}
+
+
+	/*
+	 * наброски для модификации
+	 * 	
+	 private static void insertOuterChat(TelegramBot bot, Long chatId) {
+		// Goto Other Chat
+		  InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(new InlineKeyboardButton[]{
+			      new InlineKeyboardButton("ddd").url("https://t.me/+TLfVpbnrWGNlZThi")});
+		InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
+		        new InlineKeyboardButton[]{
+		                new InlineKeyboardButton("Вход в чат").url("https://t.me/+TLfVpbnrWGNlZThi"),
+		                new InlineKeyboardButton("callback_data").callbackData("callback_data"),
+		                new InlineKeyboardButton("Game").callbackGame("94%")
+		                //new InlineKeyboardButton("Switch!").switchInlineQuery("switch_inline_query")
+		        });
+		BaseResponse response = bot.execute(new SendMessage(chatId,"key").replyMarkup(keyboard));
+		//SendMessage sf=new SendMessage(chatId,"key");
+		//sf.replyMarkup(inlineKeyboard);
+		//SendResponse sendResponse = bot.execute(sf);
+		//BaseResponse response; //=bot.execute(sendResponse.message().messageId())		
+		//sendMessage2Bot(chatId,"Кнопка",bot,inlineKeyboard);
+	}
+	private static void sendMessage2Bot(Long chatId,TelegramBot bot) {
+		SendResponse sendResponse = bot.execute(new SendMessage(chatId, "Я должен у тебя узнать. Ты кто?")
+			      .replyMarkup(new ReplyKeyboardMarkup(
+			                new String[]{"Я бот, мы братья", "Я человек"},
+			                new String[]{"Это секрет", "А ты кто?"})
+			                .oneTimeKeyboard(true)   // optional
+			                //.resizeKeyboard(true)    // optional
+			                //.selective(true)));        // optional
+							));
+		BaseResponse response; //=bot.execute(sendResponse.message().messageId())
+		//System.out.println(sendResponse.message().caption() + "\n" + sendResponse.message().chat());
+	}
+	private static void sendMessage2Bot(Long chatId, String question) {
+		// For text
+		System.out.println(question);
 	}
 	public static void foo(TelegramBot bot,Long chatId) throws InterruptedException {
 		String messaggio="Привет я Бог...";
@@ -447,70 +518,7 @@ public class App
 			Thread.sleep(10*60-1);
 			a=listMessage(chatId,bot);
 		}
-		*/
-	}
-	private static Integer sendMessage2Bot(Long chatId, String messaggio,TelegramBot bot)  {
-		SendMessage sf=new SendMessage(chatId,messaggio);
-	    SendResponse sendResponse = bot.execute(sf);
-	    boolean ok = sendResponse.isOk();
-	    Message message = sendResponse.message();
-	    Integer id=message.messageId();
-	    return id;
-	    //sendDocument(sendDocumentRequest);
-	}
-	private static void sendMessage2Bot(Long chatId, String messaggio,TelegramBot bot,Keyboard replyKeyboardMarkup)  {
-		SendMessage sf=new SendMessage(chatId,messaggio);
-		sf.replyMarkup(replyKeyboardMarkup);
-	    SendResponse sendResponse = bot.execute(sf);
-	    boolean ok = sendResponse.isOk();
-	    Message message = sendResponse.message();
-	    
-	    //sendDocument(sendDocumentRequest);
-	}
-	private static void sendMessage2Bot(Long chatId,TelegramBot bot) {
-		SendResponse sendResponse = bot.execute(new SendMessage(chatId, "Я должен у тебя узнать. Ты кто?")
-			      .replyMarkup(new ReplyKeyboardMarkup(
-			                new String[]{"Я бот, мы братья", "Я человек"},
-			                new String[]{"Это секрет", "А ты кто?"})
-			                .oneTimeKeyboard(true)   // optional
-			                //.resizeKeyboard(true)    // optional
-			                //.selective(true)));        // optional
-							));
-		BaseResponse response; //=bot.execute(sendResponse.message().messageId())
-		//System.out.println(sendResponse.message().caption() + "\n" + sendResponse.message().chat());
-	}
-	private static  Map listMessage(Long chatId,TelegramBot bot) {
-//		System.err.println(new GetUpdates().getLimit());
-		Map mes=new HashMap<>();
-		GetUpdates getUpdates = new GetUpdates().limit(1).offset(-1).timeout(0);
-		GetUpdatesResponse updatesResponse = bot.execute(getUpdates);
-		List<Update> updates = updatesResponse.updates();
-//		int i=0;
-		Message message;
-		Integer mId=0;
-		mes.put("id", mId);
-		for(Update up: updates) {
-			//System.err.print(i + " ");
-			//aaa(bot,up);
-			message = up.message();
-//		     Chat chat = message.chat();
-			if(message!=null) {
-			     User user = message.from();
-		        if (message.text() != null) { 
-		            //System.out.println("up=" + up.updateId() + " New message: " + message.text() + " id: " + message.messageId() + " from " + user.username() 
-		            //  );
-		            mes.put("id",message.messageId());
-		            mes.put("text",message.text());
-		            mes.put("user", user.username());
-		            mes.put("username", user.firstName() + " " + user.lastName());
-		            mId=message.messageId();
-		            
-		        }
-			}
-		}	
-		return mes;
-	}
-	public static void aaa(TelegramBot bot,Update update ) {
+			public static void aaa(TelegramBot bot,Update update ) {
 		
 		InlineQueryResult r1 = new InlineQueryResultPhoto("id", "photoUrl", "thumbUrl");
 		InlineQueryResult r2 = new InlineQueryResultArticle("id", "title", "message text").thumbUrl("url");
@@ -539,4 +547,5 @@ public class App
 			                .switchPmText("pmText")
 			);
 	}
+		*/
 }
